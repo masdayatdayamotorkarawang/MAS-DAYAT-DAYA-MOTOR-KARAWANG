@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mas Dayat Daya Motor Karawang - Simulasi Kredit Honda</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>MAS DAYAT DAYA MOTOR KARAWANG</h1>
+    <p>Simulasi Cicilan & Price List Resmi Honda</p>
+  </header>
+
+  <main class="container">
+    <!-- Langkah 1: Pilih Motor -->
+    <section class="card">
+      <h2>1. Pilih Tipe Motor</h2>
+      <div class="form-group">
+        <label for="select-motor">Motor Pilihan:</label>
+        <select id="select-motor">
+          <option value="">-- Memuat Data Motor --</option>
+        </select>
+      </div>
+
+      <div class="preview-motor">
+        <img id="img-motor" src="" alt="Foto Motor" style="display:none;">
+        <div class="harga-otr">
+          <span>Harga OTR Karawang:</span>
+          <strong id="text-otr">Rp -</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Langkah 2: Atur Kredit -->
+    <section class="card">
+      <h2>2. Atur Cicilan</h2>
+      
+      <div class="form-group">
+        <label for="select-dp">Uang Muka (DP):</label>
+        <select id="select-dp" disabled>
+          <option value="">-- Pilih DP --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="select-tenor">Lama Cicilan (Tenor):</label>
+        <select id="select-tenor" disabled>
+          <option value="">-- Pilih Tenor --</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Langkah 3: Hasil Simulasi -->
+    <section class="card hasil-card">
+      <h2>3. Hasil Simulasi</h2>
+      <div class="hasil-item">
+        <span>Uang Muka (DP):</span>
+        <strong id="hasil-dp">Rp -</strong>
+      </div>
+      <div class="hasil-item">
+        <span>Angsuran per Bulan:</span>
+        <strong id="hasil-angsuran" class="text-merah">Rp -</strong>
+      </div>
+      <div class="hasil-item">
+        <span>Tenor:</span>
+        <strong id="hasil-tenor">- Bulan</strong>
+      </div>
+
+      <a id="btn-wa" href="#" target="_blank" class="btn-whatsapp">
+        Konsultasikan via WhatsApp
+      </a>
+      <small class="note">*Harga dan angsuran dapat berubah sewaktu-waktu sesuai promo berlakunya.</small>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; Mas Dayat Daya Motor Karawang - Dealer Resmi Honda</p>
+  </footer>
+
+  <script>
+    let dataMotor = [];
+    let motorTerpilih = null;
+
+    // Nomor WhatsApp Mas Dayat (Ganti dengan nomor WA asli Mas Dayat)
+    const nomorWA = "6285814311679"; 
+
+    // Fetch data JSON
+    fetch('data.json')
+      .then(res => res.json())
+      .then(data => {
+        dataMotor = data;
+        initSelectMotor();
+      })
+      .catch(err => console.error("Gagal memuat data JSON:", err));
+
+    function initSelectMotor() {
+      const selectMotor = document.getElementById('select-motor');
+      selectMotor.innerHTML = '<option value="">-- Pilih Motor --</option>';
+      dataMotor.forEach((m, idx) => {
+        selectMotor.innerHTML += `<option value="${idx}">${m.tipe}</option>`;
+      });
+    }
+
+    document.getElementById('select-motor').addEventListener('change', function() {
+      const idx = this.value;
+      if (idx === "") return;
+
+      motorTerpilih = dataMotor[idx];
+      document.getElementById('text-otr').innerText = formatRupiah(motorTerpilih.otr);
+      
+      const img = document.getElementById('img-motor');
+      img.src = motorTerpilih.gambar;
+      img.style.display = 'block';
+
+      // Isi Opsi DP
+      const selectDp = document.getElementById('select-dp');
+      selectDp.disabled = false;
+      selectDp.innerHTML = '<option value="">-- Pilih DP --</option>';
+      motorTerpilih.kredit.forEach((k, i) => {
+        selectDp.innerHTML += `<option value="${i}">${formatRupiah(k.dp)}</option>`;
+      });
+
+      // Reset Tenor & Hasil
+      document.getElementById('select-tenor').disabled = true;
+      document.getElementById('select-tenor').innerHTML = '<option value="">-- Pilih Tenor --</option>';
+      resetHasil();
+    });
+
+    document.getElementById('select-dp').addEventListener('change', function() {
+      const dpIdx = this.value;
+      if (dpIdx === "") return;
+
+      const kreditSelected = motorTerpilih.kredit[dpIdx];
+      const selectTenor = document.getElementById('select-tenor');
+      selectTenor.disabled = false;
+      selectTenor.innerHTML = '<option value="">-- Pilih Tenor --</option>';
+
+      for (let tenor in kreditSelected.tenor) {
+        selectTenor.innerHTML += `<option value="${tenor}">${tenor} Bulan</option>`;
+      }
+      resetHasil();
+    });
+
+    document.getElementById('select-tenor').addEventListener('change', function() {
+      const tenor = this.value;
+      const dpIdx = document.getElementById('select-dp').value;
+      if (tenor === "" || dpIdx === "") return;
+
+      const dpValue = motorTerpilih.kredit[dpIdx].dp;
+      const angsuranValue = motorTerpilih.kredit[dpIdx].tenor[tenor];
+
+      document.getElementById('hasil-dp').innerText = formatRupiah(dpValue);
+      document.getElementById('hasil-angsuran').innerText = formatRupiah(angsuranValue) + " /bln";
+      document.getElementById('hasil-tenor').innerText = tenor + " Bulan";
+
+      // Link WA Otomatis
+      const pesan = `Halo Mas Dayat Daya Motor Karawang, saya mau konsultasi kredit:\n\n- *Motor*: ${motorTerpilih.tipe}\n- *OTR*: ${formatRupiah(motorTerpilih.otr)}\n- *DP*: ${formatRupiah(dpValue)}\n- *Tenor*: ${tenor} Bulan\n- *Angsuran*: ${formatRupiah(angsuranValue)}/bulan\n\nMohon bantuannya ya!`;
+      
+      const btnWA = document.getElementById('btn-wa');
+      btnWA.href = `https://wa.me/${nomorWA}?text=${encodeURIComponent(pesan)}`;
+      btnWA.style.display = 'block';
+    });
+
+    function resetHasil() {
+      document.getElementById('hasil-dp').innerText = 'Rp -';
+      document.getElementById('hasil-angsuran').innerText = 'Rp -';
+      document.getElementById('hasil-tenor').innerText = '- Bulan';
+      document.getElementById('btn-wa').style.display = 'none';
+    }
+
+    function formatRupiah(angka) {
+      return 'Rp ' + angka.toLocaleString('id-ID');
+    }
+  </script>
+</body>
+</html>
